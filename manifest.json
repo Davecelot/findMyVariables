@@ -3,12 +3,14 @@
     "editorType": [
         "figma"
     ],
-    "id": "1597728798279179720",
+    "id": "1597729705379528139",
     "name": "Find My Variable",
     "main": "build/main.js",
     "ui": "build/ui.js",
     "networkAccess": {
-        "allowedDomains": "none"
+        "allowedDomains": [
+            "none"
+        ]
     },
     "documentAccess": "dynamic-page"
 }
