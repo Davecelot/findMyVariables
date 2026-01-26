@@ -19,9 +19,15 @@
     "editorType": [
       "figma"
     ],
-    "id": "figma-variables-inspector-mvp",
+    "id": "1597729705379528139",
     "name": "Find My Variable",
     "main": "src/main.ts",
-    "ui": "src/ui.tsx"
+    "ui": "src/ui.tsx",
+    "networkAccess": {
+      "allowedDomains": [
+        "none"
+      ]
+    },
+    "documentAccess": "dynamic-page"
   }
 }

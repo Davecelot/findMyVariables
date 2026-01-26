@@ -61,34 +61,59 @@ export async function collectVariables(
         }
     }
 
-    // 4. Check Text segments
-    if (node.type === 'TEXT' && options.includeTextSegments) {
-        // Check if mixed
-        if (node.fills === figma.mixed || node.fontName === figma.mixed || node.fontSize === figma.mixed) {
-            const segments = node.getStyledTextSegments(['boundVariables', 'fills', 'fontName', 'fontSize'])
-            segments.forEach((seg, i) => {
-                if (seg.boundVariables) {
-                    // Check seg bound vars
-                    const bv = seg.boundVariables as any
-                    addVar(`textSeg[${i}].fontFamily`, bv['fontFamily']?.id)
-                    addVar(`textSeg[${i}].fontSize`, bv['fontSize']?.id)
+    // 4. Check Text segments/props
+    if (node.type === 'TEXT') {
+        const bv = (node as any).boundVariables || {}
 
-                    if (bv['fills']) {
-                        const fillSetup = bv['fills'] as VariableAlias[]
-                        fillSetup.forEach((a, fi) => addVar(`textSeg[${i}].fill[${fi}]`, a.id))
+        // Add character variable if exists
+        addVar('characters', bv['characters']?.id)
+
+        const mixedProps: (keyof TextNode)[] = ['fills', 'fontName', 'fontSize', 'lineHeight', 'letterSpacing', 'textCase', 'textDecoration']
+        const isMixed = mixedProps.some(p => (node as any)[p] === figma.mixed)
+
+        if (isMixed) {
+            if (options.includeTextSegments) {
+                const segments = node.getStyledTextSegments(['boundVariables', 'fills', 'fontName', 'fontSize', 'lineHeight', 'letterSpacing', 'textCase', 'textDecoration'])
+                segments.forEach((seg, i) => {
+                    if (seg.boundVariables) {
+                        const sbv = seg.boundVariables as any
+                        addVar(`textSeg[${i}].fontFamily`, sbv['fontFamily']?.id)
+                        addVar(`textSeg[${i}].fontSize`, sbv['fontSize']?.id)
+                        addVar(`textSeg[${i}].fontWeight`, sbv['fontWeight']?.id)
+                        addVar(`textSeg[${i}].fontStyle`, sbv['fontStyle']?.id)
+                        addVar(`textSeg[${i}].lineHeight`, sbv['lineHeight']?.id)
+                        addVar(`textSeg[${i}].letterSpacing`, sbv['letterSpacing']?.id)
+                        addVar(`textSeg[${i}].textCase`, sbv['textCase']?.id)
+                        addVar(`textSeg[${i}].textDecoration`, sbv['textDecoration']?.id)
+
+                        if (sbv['fills']) {
+                            const fillSetup = sbv['fills'] as VariableAlias[]
+                            fillSetup.forEach((a, fi) => addVar(`textSeg[${i}].fill[${fi}]`, a.id))
+                        }
                     }
-                }
-            })
-        } else {
-            // Not mixed, check direct node.boundVariables above (partially covered)
-            // But need to ensure coverage for text props if not mixed
-            if ('boundVariables' in node && node.boundVariables) {
-                const bv = node.boundVariables as any
-                addVar('fontFamily', bv['fontFamily']?.id)
-                addVar('fontSize', bv['fontSize']?.id)
-                addVar('fontWeight', bv['fontWeight']?.id)
+                })
             }
+        } else {
+            // Not mixed - always check these if it's a Text node
+            addVar('fontFamily', bv['fontFamily']?.id)
+            addVar('fontSize', bv['fontSize']?.id)
+            addVar('fontWeight', bv['fontWeight']?.id)
+            addVar('fontStyle', bv['fontStyle']?.id)
+            addVar('lineHeight', bv['lineHeight']?.id)
+            addVar('letterSpacing', bv['letterSpacing']?.id)
+            addVar('paragraphSpacing', bv['paragraphSpacing']?.id)
+            addVar('paragraphIndent', bv['paragraphIndent']?.id)
+            addVar('textCase', bv['textCase']?.id)
+            addVar('textDecoration', bv['textDecoration']?.id)
         }
+    }
+
+    // 5. Check other common properties
+    if ('cornerRadius' in node && node.cornerRadius !== figma.mixed) {
+        addVar('cornerRadius', (node.boundVariables as any)?.cornerRadius?.id)
+    }
+    if ('strokeWeight' in node) {
+        addVar('strokeWeight', (node.boundVariables as any)?.strokeWeight?.id)
     }
 
     // 5. Recursion
@@ -102,56 +127,44 @@ export async function collectVariables(
     return variables
 }
 
-export interface StyleVariableUsage {
+export interface StyleUsage {
     styleId: string
     styleName: string
     styleType: 'FILL' | 'STROKE' | 'TEXT' | 'EFFECT' | 'GRID'
-    property: string
-    variableId: string
+    description?: string
+    variables: {
+        property: string
+        variableId: string
+    }[]
 }
 
-export async function collectStyleVariables(node: SceneNode): Promise<StyleVariableUsage[]> {
-    const styleVariables: StyleVariableUsage[] = []
-    const checkedStyles = new Set<string>()
+export async function collectStyleVariables(node: SceneNode, options: { includeDescendants: boolean }): Promise<StyleUsage[]> {
+    const stylesMap = new Map<string, StyleUsage>()
 
     const checkStyle = async (styleId: string, type: 'FILL' | 'STROKE' | 'TEXT' | 'EFFECT' | 'GRID') => {
-        if (typeof styleId !== 'string' || !styleId || checkedStyles.has(styleId)) return
-        checkedStyles.add(styleId)
+        if (typeof styleId !== 'string' || !styleId || stylesMap.has(styleId)) return
 
         try {
             const style = figma.getStyleById(styleId)
             if (!style) return
 
-            // Check style.boundVariables if exists
-            // As of recent API, styles handle boundVariables in specific ways or on consumers. 
-            // However, the requirement states: "Styles that consume variables should expose a boundVariables object similar to nodes."
-            // Let's inspect the style object properties.
-
-            // NOTE: The Figma API for Style objects might not directly expose boundVariables in all typings yet, 
-            // but we can try to access it safely or check specific properties like `paints` for variables.
+            const usage: StyleUsage = {
+                styleId: style.id,
+                styleName: style.name,
+                styleType: type,
+                description: style.description,
+                variables: []
+            }
 
             // For PaintStyle
             if (type === 'FILL' || type === 'STROKE') {
                 const paintStyle = style as PaintStyle
-                // Check paints for bound variables if they are solid colors bound to vars?
-                // Actually, paintStyle.paints is ReadonlyArray<Paint>. 
-                // Variables are usually bound via boundVariables on the *node*, BUT inside a style definition, 
-                // the style itself can be effectively a "consumer" of variables if it's a "local style" that aliases a variable.
-                // But typically, a Variable is used INSTEAD of a Style, or a Style IS a Variable alias? 
-                // No, you can have a Style that *is* a specific color, and that color *is* a variable.
-                // In that case, `paintStyle.paints[0]` might have a bound variable?
-
-                // Let's use `boundVariables` checking if it exists on the style object (it should in newer API)
                 if ('boundVariables' in paintStyle && paintStyle.boundVariables) {
                     const bv = paintStyle.boundVariables
-                    // paints?
                     if (bv['paints']) {
                         const paintsBindings = bv['paints'] as VariableAlias[]
                         paintsBindings.forEach((alias, i) => {
-                            styleVariables.push({
-                                styleId: style.id,
-                                styleName: style.name,
-                                styleType: type,
+                            usage.variables.push({
                                 property: `paint[${i}]`,
                                 variableId: alias.id
                             })
@@ -164,25 +177,17 @@ export async function collectStyleVariables(node: SceneNode): Promise<StyleVaria
             if (type === 'TEXT') {
                 const textStyle = style as TextStyle
                 if ('boundVariables' in textStyle && textStyle.boundVariables) {
-                    const bv = textStyle.boundVariables
-                    if (bv['fontFamily']) {
-                        styleVariables.push({ styleId: style.id, styleName: style.name, styleType: type, property: 'fontFamily', variableId: bv['fontFamily'].id })
-                    }
-                    if (bv['fontSize']) {
-                        styleVariables.push({ styleId: style.id, styleName: style.name, styleType: type, property: 'fontSize', variableId: bv['fontSize'].id })
-                    }
-                    if (bv['fontWeight']) {
-                        styleVariables.push({ styleId: style.id, styleName: style.name, styleType: type, property: 'fontWeight', variableId: bv['fontWeight'].id })
-                    }
-                    if (bv['lineHeight']) {
-                        styleVariables.push({ styleId: style.id, styleName: style.name, styleType: type, property: 'lineHeight', variableId: bv['lineHeight'].id })
-                    }
-                    if (bv['letterSpacing']) {
-                        styleVariables.push({ styleId: style.id, styleName: style.name, styleType: type, property: 'letterSpacing', variableId: bv['letterSpacing'].id })
-                    }
-                    if (bv['paragraphSpacing']) {
-                        styleVariables.push({ styleId: style.id, styleName: style.name, styleType: type, property: 'paragraphSpacing', variableId: bv['paragraphSpacing'].id })
-                    }
+                    const bv = textStyle.boundVariables as any
+                    if (bv['fontFamily']) usage.variables.push({ property: 'fontFamily', variableId: bv['fontFamily'].id })
+                    if (bv['fontSize']) usage.variables.push({ property: 'fontSize', variableId: bv['fontSize'].id })
+                    if (bv['fontWeight']) usage.variables.push({ property: 'fontWeight', variableId: bv['fontWeight'].id })
+                    if (bv['fontStyle']) usage.variables.push({ property: 'fontStyle', variableId: bv['fontStyle'].id })
+                    if (bv['lineHeight']) usage.variables.push({ property: 'lineHeight', variableId: bv['lineHeight'].id })
+                    if (bv['letterSpacing']) usage.variables.push({ property: 'letterSpacing', variableId: bv['letterSpacing'].id })
+                    if (bv['paragraphSpacing']) usage.variables.push({ property: 'paragraphSpacing', variableId: bv['paragraphSpacing'].id })
+                    if (bv['paragraphIndent']) usage.variables.push({ property: 'paragraphIndent', variableId: bv['paragraphIndent'].id })
+                    if (bv['textCase']) usage.variables.push({ property: 'textCase', variableId: bv['textCase'].id })
+                    if (bv['textDecoration']) usage.variables.push({ property: 'textDecoration', variableId: bv['textDecoration'].id })
                 }
             }
 
@@ -190,15 +195,11 @@ export async function collectStyleVariables(node: SceneNode): Promise<StyleVaria
             if (type === 'EFFECT') {
                 const effectStyle = style as EffectStyle
                 if ('boundVariables' in effectStyle && effectStyle.boundVariables) {
-                    // Check effects array binding?
                     const bv = effectStyle.boundVariables
                     if (bv['effects']) {
                         const effectsBindings = bv['effects'] as VariableAlias[]
                         effectsBindings.forEach((alias, i) => {
-                            styleVariables.push({
-                                styleId: style.id,
-                                styleName: style.name,
-                                styleType: type,
+                            usage.variables.push({
                                 property: `effect[${i}]`,
                                 variableId: alias.id
                             })
@@ -207,37 +208,50 @@ export async function collectStyleVariables(node: SceneNode): Promise<StyleVaria
                 }
             }
 
+            // Only add if it has variables (or if we want to show all styles, but let's stick to variables for now)
+            // Actually, the user wants "a table for every style too", so let's include it if it's there
+            stylesMap.set(styleId, usage)
+
         } catch (e) {
             console.error(`Error checking style ${styleId}:`, e)
         }
     }
 
-    // Check relevant properties on the node
-    if ('fillStyleId' in node && node.fillStyleId) {
-        if (typeof node.fillStyleId === 'string') {
-            await checkStyle(node.fillStyleId, 'FILL')
+    const traverse = async (curr: SceneNode) => {
+        // Use a generic property check to catch all possible styles
+        const styleProps = [
+            { key: 'fillStyleId', type: 'FILL' as const },
+            { key: 'strokeStyleId', type: 'STROKE' as const },
+            { key: 'textStyleId', type: 'TEXT' as const },
+            { key: 'effectStyleId', type: 'EFFECT' as const },
+            { key: 'gridStyleId', type: 'GRID' as const }
+        ]
+
+        for (const { key, type } of styleProps) {
+            if (key in curr) {
+                const sid = (curr as any)[key]
+                if (sid === figma.mixed && curr.type === 'TEXT') {
+                    const segments = curr.getStyledTextSegments([key as any])
+                    for (const seg of segments) {
+                        const segSid = (seg as any)[key]
+                        if (typeof segSid === 'string' && segSid) {
+                            await checkStyle(segSid, type)
+                        }
+                    }
+                } else if (typeof sid === 'string' && sid) {
+                    await checkStyle(sid, type)
+                }
+            }
         }
-    }
-    if ('strokeStyleId' in node && node.strokeStyleId) {
-        if (typeof node.strokeStyleId === 'string') {
-            await checkStyle(node.strokeStyleId, 'STROKE')
-        }
-    }
-    if ('textStyleId' in node && node.textStyleId) {
-        if (typeof node.textStyleId === 'string') {
-            await checkStyle(node.textStyleId, 'TEXT')
-        }
-    }
-    if ('effectStyleId' in node && node.effectStyleId) {
-        if (typeof node.effectStyleId === 'string') {
-            await checkStyle(node.effectStyleId, 'EFFECT')
-        }
-    }
-    if ('gridStyleId' in node && node.gridStyleId) {
-        if (typeof node.gridStyleId === 'string') {
-            await checkStyle(node.gridStyleId, 'GRID')
+
+        // Search in children
+        if (options.includeDescendants && 'children' in curr) {
+            for (const child of curr.children) {
+                await traverse(child)
+            }
         }
     }
 
-    return styleVariables
+    await traverse(node)
+    return Array.from(stylesMap.values())
 }

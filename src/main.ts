@@ -1,9 +1,9 @@
 import { once, showUI, on } from '@create-figma-plugin/utilities'
 
 import { CreateCardHandler, CloseHandler } from './types'
-import { collectVariables, collectStyleVariables, VariableUsage, StyleVariableUsage } from './utils/traversal'
+import { collectVariables, collectStyleVariables, VariableUsage, StyleUsage } from './utils/traversal'
 import { resolveVariable, ResolvedVariable } from './utils/variables'
-import { drawCard, CardData } from './utils/card'
+import { drawCard, CardData, StyleGroup } from './utils/card'
 
 export default function () {
   on<CreateCardHandler>('CREATE_CARD', async function (options) {
@@ -20,21 +20,17 @@ export default function () {
       // 1. Collect
       const usages = await collectVariables(target, options)
 
-      if (usages.length === 0) {
-        figma.notify('No bound variables found.')
-        // We might still want to draw an empty card or just return
-        // Let's draw an empty card for feedback
-      }
-
-      let styleUsages: StyleVariableUsage[] = []
+      let styleUsages: StyleUsage[] = []
       if (options.includeStyleVariables) {
-        styleUsages = await collectStyleVariables(target)
+        console.log('🔍 Collecting style variables...')
+        styleUsages = await collectStyleVariables(target, options)
+        console.log('✅ Styles found:', styleUsages.length)
       }
 
       // 2. Resolve
-      // Collect unique IDs from both direct usages and style usages
+      // Collect all unique variable IDs
       const directIds = usages.map(u => u.variableId)
-      const styleIds = styleUsages.map(u => u.variableId)
+      const styleIds = styleUsages.flatMap(s => s.variables.map(v => v.variableId))
       const uniqueIds = Array.from(new Set([...directIds, ...styleIds]))
 
       // Resolve in parallel
@@ -48,36 +44,43 @@ export default function () {
       const varCache = new Map<string, ResolvedVariable | null>()
       resolutionResults.forEach(r => varCache.set(r.id, r.resolved))
 
+      // Direct Variables
       const resolvedVars: (ResolvedVariable & { property: string })[] = []
-
       for (const usage of usages) {
         const resolved = varCache.get(usage.variableId)
         if (resolved) {
-          resolvedVars.push({
-            ...resolved,
-            property: usage.property
-          })
+          resolvedVars.push({ ...resolved, property: usage.property })
         }
       }
 
-      const resolvedStyleVars: (ResolvedVariable & { styleName: string, styleType: string, property: string })[] = []
-      for (const usage of styleUsages) {
-        const resolved = varCache.get(usage.variableId)
-        if (resolved) {
-          resolvedStyleVars.push({
-            ...resolved,
-            styleName: usage.styleName,
-            styleType: usage.styleType,
-            property: usage.property
-          })
+      // Grouped Style Variables
+      const resolvedStyles: StyleGroup[] = []
+      for (const sUsage of styleUsages) {
+        const styleGroup: StyleGroup = {
+          styleId: sUsage.styleId,
+          styleName: sUsage.styleName,
+          styleType: sUsage.styleType,
+          description: sUsage.description,
+          variables: []
         }
+
+        for (const vUsage of sUsage.variables) {
+          const resolved = varCache.get(vUsage.variableId)
+          if (resolved) {
+            styleGroup.variables.push({
+              ...resolved,
+              property: vUsage.property
+            })
+          }
+        }
+        resolvedStyles.push(styleGroup)
       }
 
       // 3. Draw
       const cardData: CardData = {
         targetName: target.name,
         variables: resolvedVars,
-        styleVariables: resolvedStyleVars
+        styles: resolvedStyles
       }
 
       await drawCard(cardData, target)
