@@ -8,65 +8,75 @@ import { CreateCardHandler } from './types'
 function Toggle(props: {
   value: boolean
   onChange: (newValue: boolean) => void
-  label: string
+  title: string
+  description: string
 }) {
-  const { value, onChange, label } = props
+  const { value, onChange, title, description } = props
 
   return (
     <div
+      onClick={() => onChange(!value)}
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '12px'
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: '16px',
+        width: '100%',
+        cursor: 'pointer',
+        padding: '4px 0' // Add some tap area vertical padding
       }}
     >
       <div
-        onClick={() => onChange(!value)}
         style={{
           position: 'relative',
-          width: '56px',
-          height: '32px',
-          borderRadius: '100px',
-          cursor: 'pointer',
-          backgroundColor: value ? 'rgb(255, 106, 20)' : 'rgb(214, 214, 214)',
-          transition: 'background-color 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
-          // Inner shadow for the track
-          boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.1)'
+          width: '40px',
+          minWidth: '40px',
+          height: '24px',
+          borderRadius: '99px',
+          backgroundColor: value ? 'rgb(255, 106, 20)' : 'rgb(229, 229, 229)',
+          transition: 'background-color 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)',
+          marginTop: '2px', // Align with text title
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)'
         }}
       >
         <div
           style={{
             position: 'absolute',
-            top: '0',
-            left: '0',
-            width: '32px',
-            height: '32px',
+            top: '2px',
+            left: '2px',
+            width: '20px',
+            height: '20px',
             borderRadius: '50%',
-            backgroundColor: 'rgb(253, 253, 253)',
-            boxShadow: `
-              rgba(0, 0, 0, 0.2) 0px -1px 4px 0px inset,
-              rgba(0, 0, 0, 0.05) 0px -1px 1px 0px inset,
-              rgba(0, 0, 0, 0.075) 0px 0.796px 0.637px -0.625px,
-              rgba(0, 0, 0, 0.075) 0px 2.415px 1.932px -1.25px,
-              rgba(0, 0, 0, 0.075) 0px 6.383px 5.106px -1.875px,
-              rgba(0, 0, 0, 0.075) 0px 20px 16px -2.5px
-            `,
-            transform: value ? 'translateX(24px)' : 'translateX(0)',
-            transition: 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)'
+            backgroundColor: '#ffffff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+            transform: value ? 'translateX(16px)' : 'translateX(0)',
+            transition: 'transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)'
           }}
         />
       </div>
-      <div
-        style={{
-          fontFamily: "'Clash Grotesk', 'Inter', sans-serif",
-          fontSize: '16px', // Matched to snippet "calc(var(--framer-root-font-size, 1rem) * 1)"
-          color: 'rgb(34, 36, 38)',
-          textAlign: 'center',
-          lineHeight: '1.5em'
-        }}
-      >
-        {label}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{
+            fontFamily: "'Clash Grotesk', 'Inter', sans-serif",
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'rgb(34, 36, 38)',
+            marginBottom: '4px',
+            lineHeight: '1.2em'
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: '12px',
+            color: 'rgb(100, 100, 100)',
+            lineHeight: '1.4em'
+          }}
+        >
+          {description}
+        </div>
       </div>
     </div>
   )
@@ -90,7 +100,7 @@ function MainButton(props: { onClick: () => void; children: any }) {
 
   // Simulated "pressed" state by reducing the bottom shadow depth
   const pressedShadows = `
-    inset 0px 1px 4px 0px rgba(0,0,0,0.6),
+     inset 0px 1px 4px 0px rgba(0,0,0,0.6),
     inset 0px -2px 1px 0px rgb(19, 20, 21)
   `
 
@@ -129,16 +139,21 @@ function MainButton(props: { onClick: () => void; children: any }) {
 function Plugin() {
   const [includeDescendants, setIncludeDescendants] = useState(true)
   const [includeTextSegments, setIncludeTextSegments] = useState(true)
+  const [includeStyleVariables, setIncludeStyleVariables] = useState(false)
 
   const handleCreateButtonClick = useCallback(
     function () {
       emit<CreateCardHandler>('CREATE_CARD', {
         includeDescendants,
-        includeTextSegments
+        includeTextSegments,
+        includeStyleVariables
       })
     },
-    [includeDescendants, includeTextSegments]
+    [includeDescendants, includeTextSegments, includeStyleVariables]
   )
+
+  const iconReq = require('./assets/icon.png')
+  const iconSrc = iconReq.default || iconReq
 
   return (
     <div
@@ -147,8 +162,9 @@ function Plugin() {
         flexDirection: 'column',
         height: '100%',
         backgroundColor: '#FDFDFD',
-        padding: '32px 24px', // Increased top padding to match look
+        padding: '32px 24px 48px 24px', // Increased bottom padding
         boxSizing: 'border-box',
+        overflowY: 'auto', // Allow scrolling if content overflows
         fontFamily: "'Clash Grotesk', 'Inter', sans-serif",
         color: 'rgb(34, 36, 38)'
       }}
@@ -167,7 +183,7 @@ function Plugin() {
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '8px' }}>
         <img
-          src={require('./assets/icon.png').default}
+          src={iconSrc}
           style={{ width: '48px', height: '48px', marginBottom: '8px' }}
         />
         <h1
@@ -201,22 +217,29 @@ function Plugin() {
       {/* Toggles Container */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          display: 'flex',
+          flexDirection: 'column',
           gap: '16px',
-          marginBottom: 'auto',
-          justifyItems: 'center'
+          marginBottom: 'auto'
         }}
       >
         <Toggle
           value={includeDescendants}
           onChange={setIncludeDescendants}
-          label="Include nested components"
+          title="Search nested layers"
+          description="Inspect all layers inside the selection, not just the top level."
         />
         <Toggle
           value={includeTextSegments}
           onChange={setIncludeTextSegments}
-          label="Include mixed styles (styles that consumes variables)"
+          title="Inspect mixed text"
+          description="Find variables used in specific text segments (e.g. bold or colored words)."
+        />
+        <Toggle
+          value={includeStyleVariables}
+          onChange={setIncludeStyleVariables}
+          title="Resolve variables in styles"
+          description="Include variables that are used within the applied Paint or Text styles."
         />
       </div>
 

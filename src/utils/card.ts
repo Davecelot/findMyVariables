@@ -4,6 +4,7 @@ import { VariableUsage } from './traversal'
 export interface CardData {
     targetName: string
     variables: (ResolvedVariable & { property: string })[]
+    styleVariables?: (ResolvedVariable & { styleName: string, styleType: string, property: string })[]
 }
 
 // Map property names to semantic groups
@@ -156,6 +157,61 @@ export async function drawCard(data: CardData, targetNode: SceneNode) {
         card.appendChild(emptyText)
     }
 
+    // 3b. Style Variables Section
+    if (data.styleVariables && data.styleVariables.length > 0) {
+        // Divider ?
+        // Create Section
+        const sectionFrame = figma.createFrame()
+        sectionFrame.name = 'Section: Variables from Styles'
+        sectionFrame.layoutMode = 'VERTICAL'
+        sectionFrame.layoutSizingHorizontal = 'HUG'
+        sectionFrame.layoutSizingVertical = 'HUG'
+        sectionFrame.itemSpacing = 16
+        sectionFrame.fills = []
+
+        const titleText = figma.createText()
+        titleText.characters = 'Variables from Styles'
+        titleText.fontSize = 14
+        titleText.fontName = { family: 'Inter', style: 'Bold' }
+        titleText.fills = [{ type: 'SOLID', color: DARK_THEME.textSecondary }]
+        titleText.textCase = 'UPPER'
+        titleText.letterSpacing = { value: 4, unit: 'PERCENT' }
+        sectionFrame.appendChild(titleText)
+
+        const tableFrame = figma.createFrame()
+        tableFrame.name = 'Style Variables Table'
+        tableFrame.layoutMode = 'VERTICAL'
+        tableFrame.layoutSizingHorizontal = 'HUG'
+        tableFrame.layoutSizingVertical = 'HUG'
+        tableFrame.itemSpacing = 2
+        tableFrame.cornerRadius = 12
+        tableFrame.clipsContent = true
+        tableFrame.fills = [{ type: 'SOLID', color: DARK_THEME.surface }]
+        tableFrame.strokes = [{ type: 'SOLID', color: DARK_THEME.border }]
+
+        // Headers: Style Name, Style Type, Property, Variable
+        const headers = ['STYLE NAME', 'STYLE TYPE', 'PROPERTY', 'VARIABLE', 'VALUE']
+        const headerRow = createRow(headers, true, false, false, true)
+        tableFrame.appendChild(headerRow)
+
+        data.styleVariables.forEach(v => {
+            const rowData = [
+                { type: 'name_pill', value: v.styleName },
+                { type: 'type_tag', value: v.styleType }, // reusing type tag logic for style type
+                v.property,
+                // Variable Name
+                { type: 'name_pill', value: v.name },
+                // Value
+                formatValue(v.resolvedValue)
+            ]
+            const row = createRow(rowData, false, false, false, true)
+            tableFrame.appendChild(row)
+        })
+
+        sectionFrame.appendChild(tableFrame)
+        card.appendChild(sectionFrame)
+    }
+
     // 4. Position
     if ('absoluteBoundingBox' in targetNode && targetNode.absoluteBoundingBox) {
         const bbox = targetNode.absoluteBoundingBox
@@ -261,7 +317,7 @@ function createTable(variables: (ResolvedVariable & { property: string })[], isC
     return tableFrame
 }
 
-function createRow(data: any[], isHeader: boolean, isAlternate: boolean = false, isColorSection: boolean) {
+function createRow(data: any[], isHeader: boolean, isAlternate: boolean = false, isColorSection: boolean, isStyleSection: boolean = false) {
     const row = figma.createFrame()
     row.layoutMode = 'HORIZONTAL'
     row.layoutSizingHorizontal = 'HUG'
@@ -287,8 +343,11 @@ function createRow(data: any[], isHeader: boolean, isAlternate: boolean = false,
         // Define widths - WIDER for legibility
         // If Color Section: [Swatch(32), Property(120), Type(80), Name(180), Value(100), Collection(140)]
         // Else: [Property(120), Type(80), Name(180), Value(100), Collection(140)]
+        // If Style Section: [StyleName(140), StyleType(80), Property(100), Variable(140), Value(100)]
         let width = 120
-        if (isColorSection) {
+        if (isStyleSection) {
+            width = [140, 80, 100, 140, 100][i] || 120
+        } else if (isColorSection) {
             width = [32, 120, 80, 200, 100, 140][i] || 120
         } else {
             width = [120, 80, 200, 100, 140][i] || 120

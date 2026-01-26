@@ -1,7 +1,7 @@
 import { once, showUI, on } from '@create-figma-plugin/utilities'
 
 import { CreateCardHandler, CloseHandler } from './types'
-import { collectVariables, VariableUsage } from './utils/traversal'
+import { collectVariables, collectStyleVariables, VariableUsage, StyleVariableUsage } from './utils/traversal'
 import { resolveVariable, ResolvedVariable } from './utils/variables'
 import { drawCard, CardData } from './utils/card'
 
@@ -26,9 +26,16 @@ export default function () {
         // Let's draw an empty card for feedback
       }
 
+      let styleUsages: StyleVariableUsage[] = []
+      if (options.includeStyleVariables) {
+        styleUsages = await collectStyleVariables(target)
+      }
+
       // 2. Resolve
-      // Collect unique IDs first
-      const uniqueIds = Array.from(new Set(usages.map(u => u.variableId)))
+      // Collect unique IDs from both direct usages and style usages
+      const directIds = usages.map(u => u.variableId)
+      const styleIds = styleUsages.map(u => u.variableId)
+      const uniqueIds = Array.from(new Set([...directIds, ...styleIds]))
 
       // Resolve in parallel
       const resolutionResults = await Promise.all(
@@ -53,10 +60,24 @@ export default function () {
         }
       }
 
+      const resolvedStyleVars: (ResolvedVariable & { styleName: string, styleType: string, property: string })[] = []
+      for (const usage of styleUsages) {
+        const resolved = varCache.get(usage.variableId)
+        if (resolved) {
+          resolvedStyleVars.push({
+            ...resolved,
+            styleName: usage.styleName,
+            styleType: usage.styleType,
+            property: usage.property
+          })
+        }
+      }
+
       // 3. Draw
       const cardData: CardData = {
         targetName: target.name,
-        variables: resolvedVars
+        variables: resolvedVars,
+        styleVariables: resolvedStyleVars
       }
 
       await drawCard(cardData, target)
@@ -74,7 +95,7 @@ export default function () {
   })
 
   showUI({
-    height: 380,
+    height: 540,
     width: 340
   })
 }
