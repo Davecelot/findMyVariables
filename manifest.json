@@ -1,0 +1,14 @@
+{
+    "api": "1.0.0",
+    "editorType": [
+        "figma"
+    ],
+    "id": "1597728798279179720",
+    "name": "Find My Variable",
+    "main": "build/main.js",
+    "ui": "build/ui.js",
+    "networkAccess": {
+        "allowedDomains": "none"
+    },
+    "documentAccess": "dynamic-page"
+}
