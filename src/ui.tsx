@@ -164,9 +164,8 @@ function Plugin() {
         flexDirection: 'column',
         height: '100%',
         backgroundColor: '#FDFDFD',
-        padding: '32px 24px 48px 24px', // Increased bottom padding
+        padding: '32px 40px 48px 40px',
         boxSizing: 'border-box',
-        overflowY: 'auto', // Allow scrolling if content overflows
         fontFamily: "'Clash Grotesk', 'Inter', sans-serif",
         color: 'rgb(34, 36, 38)'
       }}
@@ -183,37 +182,42 @@ function Plugin() {
       `}</style>
 
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+      <div 
+        style={{ 
+          display: 'flex', 
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: '16px',
+          marginBottom: '32px'
+        }}
+      >
         <img
           src={iconSrc}
-          style={{ width: '48px', height: '48px', marginBottom: '8px' }}
+          style={{ width: '56px', height: '56px', borderRadius: '12px' }}
         />
-        <h1
-          style={{
-            margin: 0,
-            fontSize: '20px',
-            fontWeight: 500,
-            letterSpacing: '0px',
-            color: 'rgb(34, 36, 38)'
-          }}
-        >
-          Find My Variable
-        </h1>
-      </div>
-
-      {/* Description */}
-      <div style={{ textAlign: 'center', marginBottom: '24px', padding: '0 8px' }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: '15px',
-            lineHeight: '1.4em',
-            color: 'rgb(34, 36, 38)',
-            opacity: 1
-          }}
-        >
-          Select a layer to inspect and start searching for variables.
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: '22px',
+              fontWeight: 600,
+              letterSpacing: '-0.3px',
+              color: 'rgb(34, 36, 38)'
+            }}
+          >
+            Find My Variable
+          </h1>
+          <p
+            style={{
+              margin: 0,
+              fontSize: '14px',
+              lineHeight: '1.4em',
+              color: 'rgb(100, 100, 100)'
+            }}
+          >
+            Select a layer to inspect and start searching for variables.
+          </p>
+        </div>
       </div>
 
       {/* Toggles Container */}
@@ -221,34 +225,81 @@ function Plugin() {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
+          gap: '28px',
           marginBottom: 'auto'
         }}
       >
-        <Toggle
-          value={includeDescendants}
-          onChange={setIncludeDescendants}
-          title="Search nested layers"
-          description="Inspect all layers inside the selection, not just the top level."
-        />
-        <Toggle
-          value={includeTextSegments}
-          onChange={setIncludeTextSegments}
-          title="Inspect mixed text"
-          description="Find variables used in specific text segments (e.g. bold or colored words)."
-        />
-        <Toggle
-          value={includeStyleVariables}
-          onChange={setIncludeStyleVariables}
-          title="Resolve variables in styles"
-          description="Include variables that are used within the applied Paint or Text styles."
-        />
-        <Toggle
-          value={includeStylesWithoutVariables}
-          onChange={setIncludeStylesWithoutVariables}
-          title="Include styles without variables"
-          description="Show applied styles even when they have no bound variables."
-        />
+        {/* Variables Only Section */}
+        <div>
+          <div
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'rgb(130, 130, 130)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '12px'
+            }}
+          >
+            Variables only
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '24px'
+            }}
+          >
+            <Toggle
+              value={includeDescendants}
+              onChange={setIncludeDescendants}
+              title="Search nested layers"
+              description="Inspect all layers inside the selection, not just the top level."
+            />
+            <Toggle
+              value={includeTextSegments}
+              onChange={setIncludeTextSegments}
+              title="Inspect mixed text"
+              description="Find variables used in specific text segments (e.g. bold or colored words)."
+            />
+          </div>
+        </div>
+
+        {/* Figma Styles Section */}
+        <div>
+          <div
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'rgb(130, 130, 130)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '12px'
+            }}
+          >
+            Figma styles
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '24px'
+            }}
+          >
+            <Toggle
+              value={includeStyleVariables}
+              onChange={setIncludeStyleVariables}
+              title="Resolve variables in styles"
+              description="Include variables that are used within the applied Paint or Text styles."
+            />
+            <Toggle
+              value={includeStylesWithoutVariables}
+              onChange={setIncludeStylesWithoutVariables}
+              title="Include styles without variables"
+              description="Show applied styles even when they have no bound variables."
+            />
+          </div>
+        </div>
       </div>
 
       <VerticalSpace space="medium" />

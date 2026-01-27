@@ -22,6 +22,7 @@ const PROPERTY_GROUPS: { [key: string]: string } = {
     'strokes': 'Colors',
     'fill': 'Colors',
     'stroke': 'Colors',
+    'paint': 'Colors',
     // Typography
     'fontName': 'Typography',
     'fontSize': 'Typography',
@@ -36,30 +37,55 @@ const PROPERTY_GROUPS: { [key: string]: string } = {
     'fontStyle': 'Typography',
     // Content
     'characters': 'Content',
-    // Layout
+    // Layout / Auto-layout
     'itemSpacing': 'Layout',
+    'counterAxisSpacing': 'Layout',
     'paddingLeft': 'Layout',
     'paddingRight': 'Layout',
     'paddingTop': 'Layout',
     'paddingBottom': 'Layout',
+    'layoutGrow': 'Layout',
+    'layoutPositioning': 'Layout',
+    'layoutAlign': 'Layout',
+    'layoutSizingHorizontal': 'Layout',
+    'layoutSizingVertical': 'Layout',
+    'primaryAxisAlignItems': 'Layout',
+    'counterAxisAlignItems': 'Layout',
+    // Dimensions
     'width': 'Dimensions',
     'height': 'Dimensions',
     'minWidth': 'Dimensions',
     'maxWidth': 'Dimensions',
     'minHeight': 'Dimensions',
     'maxHeight': 'Dimensions',
+    // Position / Transform
+    'x': 'Position',
+    'y': 'Position',
+    'rotation': 'Position',
     // Effects
     'effects': 'Effects',
-    // Corner Radius
+    'effect': 'Effects',
+    // Shape / Stroke
     'cornerRadius': 'Shape',
     'topLeftRadius': 'Shape',
     'topRightRadius': 'Shape',
     'bottomLeftRadius': 'Shape',
     'bottomRightRadius': 'Shape',
     'strokeWeight': 'Shape',
-    // Others
+    'strokeTopWeight': 'Shape',
+    'strokeBottomWeight': 'Shape',
+    'strokeLeftWeight': 'Shape',
+    'strokeRightWeight': 'Shape',
+    'strokeMiterLimit': 'Shape',
+    'strokeAlign': 'Shape',
+    'strokeCap': 'Shape',
+    'strokeJoin': 'Shape',
+    'dashPattern': 'Shape',
+    // Appearance
     'opacity': 'Appearance',
-    'visible': 'Appearance'
+    'visible': 'Appearance',
+    'blendMode': 'Appearance',
+    'isMask': 'Appearance'
 }
 
 // Dark Mode Config
@@ -152,7 +178,7 @@ export async function drawCard(data: CardData, targetNode: SceneNode) {
         const grouped = groupVariables(data.variables)
 
         // Order keys specifically
-        const orderedKeys = ['Colors', 'Typography', 'Content', 'Layout', 'Dimensions', 'Shape', 'Effects', 'Appearance', 'Other']
+        const orderedKeys = ['Colors', 'Typography', 'Content', 'Layout', 'Dimensions', 'Position', 'Shape', 'Effects', 'Appearance', 'Other']
         // Add any keys that appeared but aren't in orderedKeys
         Object.keys(grouped).forEach(k => {
             if (!orderedKeys.includes(k)) orderedKeys.push(k)

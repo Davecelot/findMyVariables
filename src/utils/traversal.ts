@@ -23,45 +23,35 @@ export async function collectVariables(
         }
     }
 
-    // 1. Check direct bound variables (dimensions, layout, etc.)
+    // 1. Check direct bound variables - iterate over ALL keys to catch everything
     if ('boundVariables' in node && node.boundVariables) {
-        const bv = node.boundVariables
-        // Common properties
-        addVar('width', bv.width?.id)
-        addVar('height', bv.height?.id)
-        addVar('itemSpacing', bv.itemSpacing?.id)
-        addVar('paddingLeft', bv.paddingLeft?.id)
-        addVar('paddingRight', bv.paddingRight?.id)
-        addVar('paddingTop', bv.paddingTop?.id)
-        addVar('paddingBottom', bv.paddingBottom?.id)
-        addVar('topLeftRadius', bv.topLeftRadius?.id)
-        // Add others as needed
-    }
+        const bv = node.boundVariables as Record<string, VariableAlias | VariableAlias[] | undefined>
+        
+        // Log all keys for debugging
+        const bvKeys = Object.keys(bv)
+        if (bvKeys.length > 0) {
+            console.log(`🔍 Node "${node.name}" has boundVariables:`, bvKeys)
+        }
 
-    // 2. Check Fills
-    if ('fills' in node && Array.isArray(node.fills)) {
-        // Fills can be mixed, but boundVariables usually on the property itself?
-        // Actually, fill colors are inside the boundVariables object under 'fills'?
-        // Wait, node.boundVariables['fills'] returns an array of bindings.
-        if ('boundVariables' in node && node.boundVariables && node.boundVariables['fills']) {
-            const fillsBindings = node.boundVariables['fills'] as VariableAlias[]
-            fillsBindings.forEach((alias, index) => {
-                addVar(`fill[${index}]`, alias.id)
-            })
+        // Iterate over ALL bound variable keys dynamically
+        for (const key of bvKeys) {
+            const binding = bv[key]
+            if (!binding) continue
+
+            // Check if it's an array (like fills, strokes, effects) or a single binding
+            if (Array.isArray(binding)) {
+                (binding as VariableAlias[]).forEach((alias, i) => {
+                    if (alias && alias.id) {
+                        addVar(`${key}[${i}]`, alias.id)
+                    }
+                })
+            } else if (typeof binding === 'object' && 'id' in binding) {
+                addVar(key, (binding as VariableAlias).id)
+            }
         }
     }
 
-    // 3. Check Strokes
-    if ('strokes' in node && Array.isArray(node.strokes)) {
-        if ('boundVariables' in node && node.boundVariables && node.boundVariables['strokes']) {
-            const strokesBindings = node.boundVariables['strokes'] as VariableAlias[]
-            strokesBindings.forEach((alias, index) => {
-                addVar(`stroke[${index}]`, alias.id)
-            })
-        }
-    }
-
-    // 4. Check Text segments/props
+    // 2. Check Text segments/props
     if (node.type === 'TEXT') {
         const bv = (node as any).boundVariables || {}
 
@@ -108,14 +98,6 @@ export async function collectVariables(
         }
     }
 
-    // 5. Check other common properties
-    if ('cornerRadius' in node && node.cornerRadius !== figma.mixed) {
-        addVar('cornerRadius', (node.boundVariables as any)?.cornerRadius?.id)
-    }
-    if ('strokeWeight' in node) {
-        addVar('strokeWeight', (node.boundVariables as any)?.strokeWeight?.id)
-    }
-
     // 5. Recursion
     if (options.includeDescendants && 'children' in node) {
         for (const child of node.children) {
@@ -138,8 +120,9 @@ export interface StyleUsage {
     }[]
 }
 
-export async function collectStyleVariables(node: SceneNode, options: { includeDescendants: boolean }): Promise<StyleUsage[]> {
+export async function collectStyleVariables(node: SceneNode, options: { includeDescendants: boolean; includeStylesWithoutVariables?: boolean }): Promise<StyleUsage[]> {
     const stylesMap = new Map<string, StyleUsage>()
+    const includeStylesWithoutVars = options.includeStylesWithoutVariables ?? false
 
     const checkStyle = async (styleId: string, type: 'FILL' | 'STROKE' | 'TEXT' | 'EFFECT' | 'GRID') => {
         if (typeof styleId !== 'string' || !styleId || stylesMap.has(styleId)) return
@@ -208,9 +191,10 @@ export async function collectStyleVariables(node: SceneNode, options: { includeD
                 }
             }
 
-            // Only add if it has variables (or if we want to show all styles, but let's stick to variables for now)
-            // Actually, the user wants "a table for every style too", so let's include it if it's there
-            stylesMap.set(styleId, usage)
+            // Only add if it has variables OR if includeStylesWithoutVariables is true
+            if (usage.variables.length > 0 || includeStylesWithoutVars) {
+                stylesMap.set(styleId, usage)
+            }
 
         } catch (e) {
             console.error(`Error checking style ${styleId}:`, e)

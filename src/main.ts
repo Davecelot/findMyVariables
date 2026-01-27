@@ -98,7 +98,7 @@ export default function () {
   })
 
   showUI({
-    height: 540,
-    width: 340
+    height: 520,
+    width: 520
   })
 }
