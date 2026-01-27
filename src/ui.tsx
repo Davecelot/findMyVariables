@@ -140,16 +140,18 @@ function Plugin() {
   const [includeDescendants, setIncludeDescendants] = useState(true)
   const [includeTextSegments, setIncludeTextSegments] = useState(true)
   const [includeStyleVariables, setIncludeStyleVariables] = useState(false)
+  const [includeStylesWithoutVariables, setIncludeStylesWithoutVariables] = useState(true)
 
   const handleCreateButtonClick = useCallback(
     function () {
       emit<CreateCardHandler>('CREATE_CARD', {
         includeDescendants,
         includeTextSegments,
-        includeStyleVariables
+        includeStyleVariables,
+        includeStylesWithoutVariables
       })
     },
-    [includeDescendants, includeTextSegments, includeStyleVariables]
+    [includeDescendants, includeTextSegments, includeStyleVariables, includeStylesWithoutVariables]
   )
 
   const iconReq = require('./assets/icon.png')
@@ -240,6 +242,12 @@ function Plugin() {
           onChange={setIncludeStyleVariables}
           title="Resolve variables in styles"
           description="Include variables that are used within the applied Paint or Text styles."
+        />
+        <Toggle
+          value={includeStylesWithoutVariables}
+          onChange={setIncludeStylesWithoutVariables}
+          title="Include styles without variables"
+          description="Show applied styles even when they have no bound variables."
         />
       </div>
 

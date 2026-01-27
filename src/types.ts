@@ -2,7 +2,12 @@ import { EventHandler } from '@create-figma-plugin/utilities'
 
 export interface CreateCardHandler extends EventHandler {
   name: 'CREATE_CARD'
-  handler: (options: { includeDescendants: boolean; includeTextSegments: boolean; includeStyleVariables: boolean }) => void
+  handler: (options: {
+    includeDescendants: boolean
+    includeTextSegments: boolean
+    includeStyleVariables: boolean
+    includeStylesWithoutVariables: boolean
+  }) => void
 }
 
 export interface CloseHandler extends EventHandler {
