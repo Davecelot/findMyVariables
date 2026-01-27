@@ -21,7 +21,7 @@ export default function () {
       const usages = await collectVariables(target, options)
 
       let styleUsages: StyleUsage[] = []
-      if (options.includeStyleVariables) {
+      if (options.includeStyleVariables || options.includeStylesWithoutVariables) {
         console.log('🔍 Collecting style variables...')
         styleUsages = await collectStyleVariables(target, options)
         console.log('✅ Styles found:', styleUsages.length)
