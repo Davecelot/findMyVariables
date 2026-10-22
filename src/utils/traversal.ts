@@ -30,7 +30,7 @@ export async function collectVariables(
         // Log all keys for debugging
         const bvKeys = Object.keys(bv)
         if (bvKeys.length > 0) {
-            console.log(`🔍 Node "${node.name}" has boundVariables:`, bvKeys)
+            console.log('🔍 Node has boundVariables:', node.name, bvKeys)
         }
 
         // Iterate over ALL bound variable keys dynamically
@@ -197,7 +197,7 @@ export async function collectStyleVariables(node: SceneNode, options: { includeD
             }
 
         } catch (e) {
-            console.error(`Error checking style ${styleId}:`, e)
+            console.error('Error checking style:', styleId, e)
         }
     }
 
