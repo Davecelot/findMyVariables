@@ -2,18 +2,19 @@
   "dependencies": {
     "@create-figma-plugin/ui": "^4.0.3",
     "@create-figma-plugin/utilities": "^4.0.3",
-    "preact": ">=10"
+    "preact": "^10.29.8"
   },
   "devDependencies": {
-    "@create-figma-plugin/build": "^4.0.3",
     "@create-figma-plugin/tsconfig": "^4.0.3",
     "@figma/plugin-typings": "1.109.0",
-    "@types/node": "^25.0.10",
-    "typescript": ">=5"
+    "@types/node": "^24.19.2",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
   },
   "scripts": {
-    "build": "build-figma-plugin --typecheck --minify",
-    "watch": "build-figma-plugin --typecheck --watch"
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "test": "npm run build && node --test tests/*.test.mjs"
   },
   "figma-plugin": {
     "editorType": [
@@ -29,5 +30,8 @@
       ]
     },
     "documentAccess": "dynamic-page"
+  },
+  "engines": {
+    "node": ">=24.22.1 <25"
   }
 }
